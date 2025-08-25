@@ -1,0 +1,10 @@
+# GIT
+.git
+
+# PYTHON
+*.md
+__pycache__/
+**/__pycache__/
+
+# VENV
+.venv/

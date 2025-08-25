@@ -1,41 +1,67 @@
-from uuid import uuid4
+import os
 import asyncio
+import logging
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from vllm import SamplingParams
 
-from .model import llm, sampling_params
+from .model import llm
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+logging.info(f"MODEL = {os.getenv('MODEL_PATH')}")
 
 app = FastAPI()
 
 class QueryRequest(BaseModel):
+    request_id: str
     query: str
+
+    n: int = Field(default=1)
+    top_p: float = Field(default=1)
+    temperature: float = Field(default=0.0)
+    max_tokens: int = Field(default=1024)
+    seed: int = Field(default=42)
 
 
 @app.post("/generate")
 async def generate_response(request: QueryRequest):
-    request_id = str(uuid4())   # 요청 구분용 uuid
-    llm.add_request(request_id, request.query, sampling_params)
     sent_text = ""  # 생성된 text 저장
 
     async def stream_response():
         nonlocal sent_text
-        while True:
-            request_outputs = llm.step()
 
-            for output in request_outputs:
-                if output.request_id == request_id:
-                    text = output.outputs[0].text
-                    send_text = text[len(sent_text):]   # 이미 받은 text 이후부터
-                    sent_text = text                    # sent_text 업데이트
+        sampling_params = SamplingParams(
+            n=request.n,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            repetition_penalty=1.1,
+            max_tokens=request.max_tokens,
+            seed=request.seed
+        )
+        result_generator = llm.generate(
+            request.query,
+            sampling_params,
+            request_id=request.request_id
+        )
 
-                    for word in send_text.split(" "):   # 띄어쓰기 단위로 streaming
-                        if word:
-                            yield word + " "
-                    if output.finished:
-                        return
-    
-            await asyncio.sleep(0.1)
+        async for output in result_generator:
+            text = output.outputs[0].text
+            send_text = text[len(sent_text):]
+            sent_text = text
+
+            for word in send_text.split(" "):
+                if word:
+                    yield word + " "
+            
+            if output.finished:
+                return
     
     return StreamingResponse(stream_response(), media_type="text/plain")

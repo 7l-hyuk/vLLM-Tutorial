@@ -1,7 +1,7 @@
-from vllm import EngineArgs, LLMEngine, SamplingParams
+from vllm import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
 from .config import MODEL_PATH
 
-engine_args = EngineArgs(
+engine_args = AsyncEngineArgs(
     model=MODEL_PATH,
     tensor_parallel_size=1,
     gpu_memory_utilization=0.75,
@@ -13,7 +13,7 @@ engine_args = EngineArgs(
     swap_space=6
 )
 
-llm = LLMEngine.from_engine_args(engine_args)
+llm = AsyncLLMEngine.from_engine_args(engine_args)
 sampling_params = SamplingParams(
     temperature=0.0,
     top_k=1,

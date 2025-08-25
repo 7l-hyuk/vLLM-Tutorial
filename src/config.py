@@ -1,1 +1,4 @@
-MODEL_PATH = "../../vllm-models/Llama-3.2-1B-Instruct"
+import os
+
+# MODEL_PATH = "../../vllm-models/Llama-3.2-1B-Instruct"
+MODEL_PATH = os.getenv("MODEL_PATH")

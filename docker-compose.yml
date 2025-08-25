@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  vllm:
+    image: vllm_test:0.0.0
+    container_name: vllm
+    shm_size: "16g"
+    environment:
+      - MODEL_PATH=/app/models/model
+    ports:
+      - "8000:8000"
+    volumes:
+      - /home/super/model:/app/models
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
